@@ -171,7 +171,7 @@ public class GameManager : INotifyPropertyChanged
         bool hitEdge = false;
         foreach (var enemy in Enemies)
         {
-            enemy.PosX += (int)(_enemySpeed * _enemyMoveDirection);
+            enemy.PosX += _enemySpeed * _enemyMoveDirection;
 
             // Check for boundary collision
             if (_enemyMoveDirection == 1 && enemy.PosX + enemy.Width > GameWidth)
@@ -189,7 +189,8 @@ public class GameManager : INotifyPropertyChanged
             _enemyMoveDirection *= -1; // Reverse direction
             foreach (var enemy in Enemies)
             {
-                enemy.PosY += (int)_enemyDropAmount; // Move down
+                enemy.PosY += _enemyDropAmount; // Move down
+                _enemySpeed += 0.003; // Increase speed slightly
             }
         }
     }

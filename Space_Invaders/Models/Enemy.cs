@@ -13,8 +13,8 @@ public enum HostileUnitType
 public class Enemy
 {
     public HostileUnitType UnitType { get; set; }
-    public int HorizontalPosition { get; set; }
-    public int VerticalPosition { get; set; }
+    public double HorizontalPosition { get; set; }
+    public double VerticalPosition { get; set; }
     public int ScoreValue { get; set; }
     public string SpriteAssetPath { get; set; }
     public int EntityWidth { get; set; } = 40;
@@ -42,14 +42,6 @@ public class Enemy
                 FireInterval = TimeSpan.FromSeconds(6.0);
                 FireProbability = 0.002;
                 break;
-            case HostileUnitType.Standard:
-                 FireInterval = TimeSpan.FromSeconds(4.0);
-                FireProbability = 0.001;
-                break;
-            case HostileUnitType.Light:
-                 FireInterval = TimeSpan.FromSeconds(2.0);
-                FireProbability = 0.0005;
-                break;
             case HostileUnitType.Elite:
                 FireInterval = TimeSpan.FromSeconds(1.5);
                 FireProbability = 0.003;
@@ -67,8 +59,8 @@ public class Enemy
         if (randomGenerator.NextDouble() < FireProbability)
         {
             PreviousFireTime = DateTime.Now;
-            int projectileX = HorizontalPosition + EntityWidth / 2;
-            int projectileY = VerticalPosition + EntityHeight;
+            int projectileX = (int)HorizontalPosition + EntityWidth / 2;
+            int projectileY = (int)VerticalPosition + EntityHeight;
             int projectileVelocity = 5;
             return new Bullet(projectileX, projectileY, projectileVelocity, ShotCategory.Enemy);
         }
@@ -99,12 +91,12 @@ public class Enemy
 
     public bool DetectCollisionWith(Bullet projectile)
     {
-        return projectile.IsCollidingWith(HorizontalPosition, VerticalPosition, EntityWidth, EntityHeight);
+        return projectile.IsCollidingWith((int)HorizontalPosition, (int)VerticalPosition, EntityWidth, EntityHeight);
     }
 
     // Propriedades e métodos de compatibilidade
-    public int PosX { get => HorizontalPosition; set => HorizontalPosition = value; }
-    public int PosY { get => VerticalPosition; set => VerticalPosition = value; }
+    public double PosX { get => HorizontalPosition; set => HorizontalPosition = value; }
+    public double PosY { get => VerticalPosition; set => VerticalPosition = value; }
     public int Points { get => ScoreValue; set => ScoreValue = value; }
     public string ImagePath { get => SpriteAssetPath; set => SpriteAssetPath = value; }
     public int Width { get => EntityWidth; set => EntityWidth = value; }

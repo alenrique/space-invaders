@@ -28,6 +28,7 @@ public sealed partial class GamePage : Page
         this.InitializeComponent();
         _gameManager = new GameManager();
         this.DataContext = _gameManager;
+        _gameManager.GameOver += OnGameOver; // Add this line
 
         this.Loaded += OnPageLoaded;
         this.Unloaded += OnPageUnloaded;
@@ -46,6 +47,63 @@ public sealed partial class GamePage : Page
         };
         _mainGameLoop.Tick += OnGameLoopTick;
         _mainGameLoop.Start();
+    }
+
+    private async void OnGameOver(int finalScore)
+    {
+        // Ensure UI updates are on the main thread
+        if (this.DispatcherQueue != null)
+        {
+            this.DispatcherQueue.TryEnqueue(async () =>
+            {
+                GameOverText.Visibility = Visibility.Visible;
+                _mainGameLoop.Stop();
+
+                // Create a ContentDialog for name input
+                ContentDialog nameInputDialog = new ContentDialog
+                {
+                    Title = "Game Over!",
+                    Content = $"Sua Pontuação: {finalScore}\nDigite seu nome:",
+                    CloseButtonText = "Cancelar"
+                };
+
+                TextBox nameInputTextBox = new TextBox
+                {
+                    PlaceholderText = "Player Name",
+                    MaxLength = 20
+                };
+
+                StackPanel dialogContent = new StackPanel();
+                dialogContent.Children.Add(new TextBlock { Text = $"Sua Pontuação: {finalScore}" });
+                dialogContent.Children.Add(new TextBlock { Text = "Digite seu nome:" });
+                dialogContent.Children.Add(nameInputTextBox);
+
+                nameInputDialog.Content = dialogContent;
+
+                nameInputDialog.PrimaryButtonText = "OK";
+                nameInputDialog.PrimaryButtonClick += async (sender, args) =>
+                {
+                    string? playerName = nameInputTextBox.Text;
+                    if (!string.IsNullOrWhiteSpace(playerName))
+                    {
+                        await _gameManager.SaveScore(playerName, finalScore);
+                    }
+                    else
+                    {
+                        await _gameManager.SaveScore("Anonymous", finalScore);
+                    }
+                };
+
+                nameInputDialog.XamlRoot = this.XamlRoot; // Add this line
+                await nameInputDialog.ShowAsync();
+
+                // Navigate back to the main page after the dialog is closed
+                if (this.Frame != null)
+                {
+                    this.Frame.Navigate(typeof(MainPage));
+                }
+            });
+        }
     }
 
     private void InitializeVisuals()

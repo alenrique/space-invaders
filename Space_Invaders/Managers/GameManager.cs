@@ -4,12 +4,15 @@ using Space_Invaders.Models;
 using Microsoft.UI;
 using System.Linq;
 using Space_Invaders.Utils;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Space_Invaders.Managers;
 
 public class GameManager : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
+    public Action<int>? GameOver; // Evento para notificar o GamePage sobre o fim do jogo
 
     public double GameWidth { get; set; } = 1000;
     public double GameHeight { get; set; } = 600;
@@ -50,6 +53,10 @@ public class GameManager : INotifyPropertyChanged
             {
                 _isGameOver = value;
                 OnPropertyChanged(nameof(IsGameOver));
+                if (_isGameOver)
+                {
+                    GameOver?.Invoke(CurrentPlayer.Score); // Invoca o evento GameOver
+                }
             }
         }
     }
@@ -275,6 +282,12 @@ public class GameManager : INotifyPropertyChanged
                 enemy.PosY += _enemyDropAmount; // Move down
                 _enemySpeed += 0.003; // Increase speed slightly
             }
+
+            // Check if any enemy has reached the bottom
+            if (Enemies.Any(enemy => enemy.PosY + enemy.Height >= GameHeight - 150))
+            {
+                IsGameOver = true;
+            }
         }
     }
 
@@ -365,5 +378,100 @@ public class GameManager : INotifyPropertyChanged
     protected virtual void OnPropertyChanged(string propertyName)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    public async Task SaveScore(string playerName, int score)
+    {
+        string scoresFilePath = "score.txt";
+
+        try
+        {
+            using (StreamWriter writer = new StreamWriter(scoresFilePath, append: true))
+            {
+                string scoreEntry = $"{DateTime.Now}: {playerName} - {score} points";
+                await writer.WriteLineAsync(scoreEntry);
+            }
+            Console.WriteLine($"Score saved to {scoresFilePath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving score: {ex.Message}");
+        }
+    }
+
+    public async Task<List<ScoreEntry>> LoadScores()
+    {
+        List<ScoreEntry> scores = new List<ScoreEntry>();
+        string scoresFilePath = "score.txt";
+
+        if (!File.Exists(scoresFilePath))
+        {
+            return scores; // Return empty list if file doesn't exist
+        }
+
+        try
+        {
+            using (StreamReader reader = new StreamReader(scoresFilePath))
+            {
+                string? line;
+                while ((line = await reader.ReadLineAsync()) != null)
+                {
+                    // Parse the line: "DateTime: PlayerName - Score points"
+                    // Example: "8/24/2025 10:30:00 AM: Player1 - 1234 points"
+                    try
+                    {
+                        int pointsKeywordIndex = line.IndexOf(" points");
+                        if (pointsKeywordIndex == -1) continue; // Skip if " points" not found
+
+                        string lineWithoutPoints = line.Substring(0, pointsKeywordIndex).Trim(); // "24/08/2025 19:04:28: Joanna - 200"
+
+                        int lastDashIndex = lineWithoutPoints.LastIndexOf(" - ");
+                        if (lastDashIndex == -1) continue; // Skip if " - " not found
+
+                        string scoreString = lineWithoutPoints.Substring(lastDashIndex + 3).Trim(); // "200"
+                        string dateTimeAndNamePart = lineWithoutPoints.Substring(0, lastDashIndex).Trim(); // "24/08/2025 19:04:28: Joanna"
+
+                        int lastColonIndex = dateTimeAndNamePart.LastIndexOf(':');
+                        // This is tricky. If the time format is HH:mm:ss, there will be colons in the time.
+                        // We need the colon that separates the date/time from the name.
+                        // Let's assume the date format is consistent and the last colon before the name is the separator.
+                        // If the date format is "dd/MM/yyyy HH:mm:ss", then the last colon of the time is the one we want.
+                        // The example "24/08/2025 19:04:28: Joanna" shows the colon after "28".
+                        // So, `LastIndexOf(':')` should work here.
+
+                        if (lastColonIndex == -1) continue; // Skip if no colon found
+
+                        string datePart = dateTimeAndNamePart.Substring(0, lastColonIndex).Trim();
+                        string playerName = dateTimeAndNamePart.Substring(lastColonIndex + 1).Trim();
+
+                        if (DateTime.TryParse(datePart, out DateTime date) && int.TryParse(scoreString, out int score))
+                        {
+                            Console.WriteLine($"Parsed Entry - Date: {date}, Player: {playerName}, Score: {score}");
+                            scores.Add(new ScoreEntry { Date = date, PlayerName = playerName, Score = score });
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Failed to parse Date or Score: Date='{datePart}', Score='{scoreString}'");
+                        }
+                    }
+                    catch (Exception parseEx)
+                    {
+                        Console.WriteLine($"Error parsing score line: {line} - {parseEx.Message}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading scores: {ex.Message}");
+        }
+
+        // Sort scores in descending order
+        Console.WriteLine($"Number of scores loaded: {scores.Count}");
+        foreach (var score in scores)
+        {
+            Console.WriteLine($"{score.Date}: {score.PlayerName} - {score.Score} points");
+        }
+        return scores.OrderByDescending(s => s.Score).ToList();
     }
 }

@@ -1,0 +1,47 @@
+<Page
+    x:Class="Space_Invaders.RankingPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <Canvas x:Name="GameCanvas" Width="1000" Height="600" Background="Black">
+            <TextBlock Text="Ranking"
+                    FontSize="48"
+                    FontFamily="ms-appx:///Assets/Fonts/PixelifySans-VariableFont_wght.ttf"
+                    VerticalAlignment="Center"
+                    Canvas.Left="400" Canvas.Top="50"/>
+
+            <ListView x:Name="RankingListView"
+                    Width="600"
+                    Height="400"
+                    Canvas.Left="200"
+                    Canvas.Top="150"
+                    Foreground="White"
+                    Background="Transparent"
+                    BorderBrush="White"
+                    BorderThickness="2"
+                    Padding="20">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding PlayerName}" Width="150" FontSize="28" FontFamily="ms-appx:///Assets/Fonts/PixelifySans-VariableFont_wght.ttf"/>
+                            <TextBlock Text="{Binding Score}" Width="100" FontSize="28" FontFamily="ms-appx:///Assets/Fonts/PixelifySans-VariableFont_wght.ttf"/>
+                            <TextBlock Text="{Binding Date}" FontSize="28" FontFamily="ms-appx:///Assets/Fonts/PixelifySans-VariableFont_wght.ttf"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <Button Content="Back"
+                    FontFamily="ms-appx:///Assets/Fonts/PixelifySans-VariableFont_wght.ttf"
+                    FontSize="24"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="OnBackToMainMenuClick"/>
+        </Canvas>
+    </Grid>
+</Page>

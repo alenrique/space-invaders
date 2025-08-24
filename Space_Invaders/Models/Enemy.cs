@@ -16,7 +16,7 @@ public class Enemy
     public double HorizontalPosition { get; set; }
     public double VerticalPosition { get; set; }
     public int ScoreValue { get; set; }
-    public string SpriteAssetPath { get; set; }
+    public string SpriteAssetPath { get; set; } = string.Empty;
     public int EntityWidth { get; set; } = 40;
     public int EntityHeight { get; set; } = 40;
     public int MoveDirection { get; set; } = 0; // 1 for right, -1 for left, 0 for no movement

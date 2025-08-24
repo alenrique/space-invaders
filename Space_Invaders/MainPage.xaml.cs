@@ -30,4 +30,25 @@ public sealed partial class MainPage : Page
     {
         contentText.Foreground = new SolidColorBrush(Colors.White);
     }
+
+    private void RankingButton_Click(object sender, RoutedEventArgs e)
+    {
+        Frame.Navigate(typeof(RankingPage));
+    }
+
+    private void RankingButton_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is Button button && button.Content is TextBlock textBlock)
+        {
+            textBlock.Foreground = new SolidColorBrush(Colors.Lime);
+        }
+    }
+
+    private void RankingButton_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is Button button && button.Content is TextBlock textBlock)
+        {
+            textBlock.Foreground = new SolidColorBrush(Colors.White);
+        }
+    }
 }

@@ -64,6 +64,21 @@
                         FontFamily="ms-appx:///Assets/Fonts/PixelifySans-VariableFont_wght.ttf"
                         Foreground="White" />
             </Button>
+
+            <!-- Botão Ranking -->
+            <Button x:Name="rankingButton"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="0"
+                    Click="RankingButton_Click"
+                    PointerEntered="RankingButton_PointerEntered"
+                    PointerExited="RankingButton_PointerExited"
+                    Canvas.Left="440" Canvas.Top="500"> <!-- Adjusted Top position -->
+                <TextBlock Text="Ranking"
+                        FontSize="28"
+                        FontFamily="ms-appx:///Assets/Fonts/PixelifySans-VariableFont_wght.ttf"
+                        Foreground="White" />
+            </Button>
         </Canvas>
     </Grid>
 </Page>

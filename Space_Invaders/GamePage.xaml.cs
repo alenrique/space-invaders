@@ -82,7 +82,7 @@ public sealed partial class GamePage : Page
             if (entity is Player p) Canvas.SetLeft(sprite, p.PosX);
             else if (entity is Enemy en) { Canvas.SetLeft(sprite, en.PosX); Canvas.SetTop(sprite, en.PosY); }
             else if (entity is Bullet b) { Canvas.SetLeft(sprite, b.PosX); Canvas.SetTop(sprite, b.PosY); }
-            else if (entity is Wall w && !w.IsDestroyed && sprite is Rectangle r) { Canvas.SetLeft(sprite, w.PosX); Canvas.SetTop(sprite, w.PosY); r.Fill = w.GetWallColor(); }
+            else if (entity is Wall w) { Canvas.SetLeft(sprite, w.PosX); Canvas.SetTop(sprite, w.PosY); sprite.Opacity = w.WallColor.Color.A / 255.0; }
         }
     }
 
@@ -132,13 +132,13 @@ public sealed partial class GamePage : Page
             sprite = new Rectangle
             {
                 Width = 4, Height = 10,
-                Fill = new SolidColorBrush(b.Category == ShotCategory.Player ? Colors.Yellow : Colors.White)
+                Fill = new SolidColorBrush(Colors.White)
             };
             Canvas.SetTop(sprite, b.PosY);
         }
         else if (entity is Wall w)
         {
-            sprite = new Rectangle { Width = w.Width, Height = w.Height, Fill = w.GetWallColor() };
+            sprite = new Image { Width = w.Width, Height = w.Height, Source = new BitmapImage(new Uri("ms-appx:///Assets/Images/wall.png")) };
             Canvas.SetTop(sprite, w.PosY);
             Canvas.SetLeft(sprite, w.PosX);
         }

@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using Space_Invaders.Models;
 using Microsoft.UI;
 using System.Linq;
+using Space_Invaders.Utils;
 
 namespace Space_Invaders.Managers;
 
@@ -59,6 +60,8 @@ public class GameManager : INotifyPropertyChanged
     public ObservableCollection<Bullet> Bullets { get; } = new();
     public ObservableCollection<Wall> Barriers { get; } = new();
 
+    private SoundManager _soundManager;
+
     private int _enemyMoveDirection = 1; // 1 for right, -1 for left
     private double _enemySpeed = 1.0;
     private double _enemyDropAmount = 20.0;
@@ -66,12 +69,12 @@ public class GameManager : INotifyPropertyChanged
     public GameManager()
     {
         CurrentPlayer = new Player(300, 500);
+        _soundManager = new SoundManager();
         InitializeGame();
     }
 
     private void InitializeGame()
     {
-        Console.WriteLine($"Game initialized with dimensions: {GameWidth}x{GameHeight}");
         InitializePlayer();
         InitializeEnemyFormation();
         InitializeDefensiveBarriers();
@@ -110,11 +113,11 @@ public class GameManager : INotifyPropertyChanged
     {
         Barriers.Clear();
         // Calculate vertical position relative to GameHeight
-        double barrierVerticalPos = GameHeight - 150; // Example: 150 units from the bottom
+        double barrierVerticalPos = GameHeight - 200; // Example: 200 units from the bottom
 
         // Calculate horizontal positions to distribute barriers evenly
         int numberOfBarriers = 4;
-        double barrierWidth = 50; // Assuming a fixed width for each barrier
+        double barrierWidth = 81; // Assuming a fixed width for each barrier
         double totalBarriersWidth = numberOfBarriers * barrierWidth;
         double spacing = (GameWidth - totalBarriersWidth) / (numberOfBarriers + 1);
 
@@ -161,6 +164,18 @@ public class GameManager : INotifyPropertyChanged
             // Lógica para próxima fase
             InitializeEnemyFormation();
             CurrentPlayer.Lives += 1; // Bônus de vida
+        }
+        CleanUpDestroyedBarriers(); // Call the cleanup method
+    }
+
+    private void CleanUpDestroyedBarriers()
+    {
+        for (int i = Barriers.Count - 1; i >= 0; i--)
+        {
+            if (Barriers[i].IsDestroyed)
+            {
+                Barriers.RemoveAt(i);
+            }
         }
     }
 
@@ -231,6 +246,7 @@ public class GameManager : INotifyPropertyChanged
                 if (!wall.IsDestroyed && wall.IsCollidingWith(bullet))
                 {
                     wall.TakeDamage();
+                    _soundManager.PlayExplosion();
                     Bullets.RemoveAt(i);
                     hit = true;
                     break;
@@ -257,6 +273,7 @@ public class GameManager : INotifyPropertyChanged
                 if (bullet.IsCollidingWith(CurrentPlayer.PosX, CurrentPlayer.PosY, CurrentPlayer.Width, CurrentPlayer.Height))
                 {
                     CurrentPlayer.LoseLife();
+                    _soundManager.PlayExplosion();
                     Bullets.RemoveAt(i);
                     if (CurrentPlayer.Lives <= 0)
                     {

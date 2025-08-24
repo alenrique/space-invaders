@@ -17,8 +17,8 @@ public class Enemy
     public int VerticalPosition { get; set; }
     public int ScoreValue { get; set; }
     public string SpriteAssetPath { get; set; }
-    public int EntityWidth { get; set; } = 50;
-    public int EntityHeight { get; set; } = 50;
+    public int EntityWidth { get; set; } = 40;
+    public int EntityHeight { get; set; } = 40;
 
     public DateTime PreviousFireTime { get; set; } = DateTime.MinValue;
     public TimeSpan FireInterval { get; set; }

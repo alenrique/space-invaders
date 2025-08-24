@@ -40,9 +40,6 @@ public class Player
     public void UpdateHorizontalPosition(int movementDelta)
     {
         HorizontalCoordinate += movementDelta;
-        // Restringir movimento para manter dentro da área de jogo
-        if (HorizontalCoordinate < 0) HorizontalCoordinate = 0;
-        if (HorizontalCoordinate > 550) HorizontalCoordinate = 550; // Considerando largura da tela
     }
 
     // Propriedades de compatibilidade para manter funcionamento

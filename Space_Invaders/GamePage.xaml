@@ -10,21 +10,7 @@
     IsTabStop="True">
 
     <Grid>
-        
-        <Rectangle>
-            <Rectangle.Fill>
-                <RadialGradientBrush
-                    GradientOrigin="0.5,0.5"
-                    Center="0.5,0.5"
-                    RadiusX="0.8"
-                    RadiusY="0.8">
-                    <GradientStop Color="#303030" Offset="0.0"/>
-                    <GradientStop Color="#000000" Offset="1.0"/>
-                </RadialGradientBrush>
-            </Rectangle.Fill>
-        </Rectangle>
-
-        <Canvas x:Name="GameCanvas" Width="800" Height="600" Background="Transparent" KeyDown="HandleKeyboardInput">
+        <Canvas x:Name="GameCanvas" Width="1000" Height="600" Background="Black" KeyDown="HandleKeyboardInput">
 
             <TextBlock x:Name="ScoreText"
                        Text="{Binding ScoreText, FallbackValue='Score: 0'}"
@@ -39,7 +25,7 @@
                        FontSize="20"
                        FontWeight="Bold"
                        Foreground="White"
-                       Canvas.Left="700"
+                       Canvas.Left="900"
                        Canvas.Top="10"/>
             
             <TextBlock x:Name="GameOverText"

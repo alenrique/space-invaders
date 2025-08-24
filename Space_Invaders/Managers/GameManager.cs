@@ -10,6 +10,9 @@ public class GameManager : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public double GameWidth { get; set; } = 1000;
+    public double GameHeight { get; set; } = 600;
+
     // Propriedades para Data Binding na UI
     private string _scoreText = "Score: 0";
     public string ScoreText
@@ -56,6 +59,10 @@ public class GameManager : INotifyPropertyChanged
     public ObservableCollection<Bullet> Bullets { get; } = new();
     public ObservableCollection<Wall> Barriers { get; } = new();
 
+    private int _enemyMoveDirection = 1; // 1 for right, -1 for left
+    private double _enemySpeed = 1.0;
+    private double _enemyDropAmount = 20.0;
+
     public GameManager()
     {
         CurrentPlayer = new Player(300, 500);
@@ -64,6 +71,7 @@ public class GameManager : INotifyPropertyChanged
 
     private void InitializeGame()
     {
+        Console.WriteLine($"Game initialized with dimensions: {GameWidth}x{GameHeight}");
         InitializePlayer();
         InitializeEnemyFormation();
         InitializeDefensiveBarriers();
@@ -72,12 +80,17 @@ public class GameManager : INotifyPropertyChanged
 
     public void InitializePlayer()
     {
-        CurrentPlayer = new Player(300, 500);
+        CurrentPlayer = new Player((int)(GameWidth / 2 - 25), (int)(GameHeight - 70));
     }
 
     public void InitializeEnemyFormation()
     {
         Enemies.Clear();
+        // Calculate starting X to center the enemy formation
+        // Assuming each enemy is 50 wide and there are 3 columns, total width is 11 * 70 = 770
+        double formationWidth = 11 * 70; 
+        double startX = (GameWidth - formationWidth) / 2;
+
         for (int row = 0; row < 5; row++)
         {
             HostileUnitType unitType;
@@ -85,9 +98,9 @@ public class GameManager : INotifyPropertyChanged
             else if (row == 1 || row == 2) unitType = HostileUnitType.Standard;
             else unitType = HostileUnitType.Light;
 
-            for (int col = 0; col < 3; col++)
+            for (int col = 0; col < 11; col++)
             {
-                var enemy = new Enemy(col * 70 + 300, row * 50 + 50, unitType);
+                var enemy = new Enemy((int)(startX + col * 50), row * 45 + 50, unitType);
                 Enemies.Add(enemy);
             }
         }
@@ -96,26 +109,38 @@ public class GameManager : INotifyPropertyChanged
     public void InitializeDefensiveBarriers()
     {
         Barriers.Clear();
-        int barrierVerticalPos = 400;
-        int gapBarrier = 80;
-        int[] barrierHorizontalPositions = { gapBarrier, gapBarrier * 2 + 100, gapBarrier * 3 + 200, gapBarrier * 4 + 300 };
+        // Calculate vertical position relative to GameHeight
+        double barrierVerticalPos = GameHeight - 150; // Example: 150 units from the bottom
 
-        foreach (int barrierX in barrierHorizontalPositions)
+        // Calculate horizontal positions to distribute barriers evenly
+        int numberOfBarriers = 4;
+        double barrierWidth = 50; // Assuming a fixed width for each barrier
+        double totalBarriersWidth = numberOfBarriers * barrierWidth;
+        double spacing = (GameWidth - totalBarriersWidth) / (numberOfBarriers + 1);
+
+        for (int i = 0; i < numberOfBarriers; i++)
         {
-            Barriers.Add(new Wall(barrierX, barrierVerticalPos));
+            double barrierX = spacing * (i + 1) + i * barrierWidth;
+            Barriers.Add(new Wall((int)barrierX, (int)barrierVerticalPos));
         }
     }
 
     public void MovePlayer(int direction) // -1 para esquerda, 1 para direita
     {
         if (IsGameOver) return;
-        CurrentPlayer.MoveX(10 * direction);
+        double newPosX = CurrentPlayer.PosX + (10 * direction);
+
+        // Boundary check for player movement
+        if (newPosX >= 0 && newPosX <= GameWidth - CurrentPlayer.Width)
+        {
+            CurrentPlayer.MoveX(10 * direction);
+        }
     }
 
     public void PlayerShoot()
     {
         if (IsGameOver) return;
-        if (Bullets.Count(b => b.Category == ShotCategory.Player) < 3)
+        if (Bullets.Count(b => b.Category == ShotCategory.Player) < 1)
         {
             var newProjectile = new Bullet(CurrentPlayer.PosX + CurrentPlayer.Width / 2, CurrentPlayer.PosY, 10, ShotCategory.Player);
             Bullets.Add(newProjectile);
@@ -129,11 +154,43 @@ public class GameManager : INotifyPropertyChanged
         ProcessBulletMovement();
         HandleEnemyFirePattern();
         ProcessCollisionDetection();
+        UpdateEnemyMovement(); // Added this line
 
         if (Enemies.Count == 0)
         {
             // Lógica para próxima fase
             InitializeEnemyFormation();
+            CurrentPlayer.Lives += 1; // Bônus de vida
+        }
+    }
+
+    private void UpdateEnemyMovement() // New method
+    {
+        if (!Enemies.Any()) return;
+
+        bool hitEdge = false;
+        foreach (var enemy in Enemies)
+        {
+            enemy.PosX += (int)(_enemySpeed * _enemyMoveDirection);
+
+            // Check for boundary collision
+            if (_enemyMoveDirection == 1 && enemy.PosX + enemy.Width > GameWidth)
+            {
+                hitEdge = true;
+            }
+            else if (_enemyMoveDirection == -1 && enemy.PosX < 0)
+            {
+                hitEdge = true;
+            }
+        }
+
+        if (hitEdge)
+        {
+            _enemyMoveDirection *= -1; // Reverse direction
+            foreach (var enemy in Enemies)
+            {
+                enemy.PosY += (int)_enemyDropAmount; // Move down
+            }
         }
     }
 
@@ -142,7 +199,7 @@ public class GameManager : INotifyPropertyChanged
         for (int i = Bullets.Count - 1; i >= 0; i--)
         {
             Bullets[i].UpdatePosition();
-            if (Bullets[i].IsOffScreen(600))
+            if (Bullets[i].IsOffScreen((int)GameHeight))
             {
                 Bullets.RemoveAt(i);
             }

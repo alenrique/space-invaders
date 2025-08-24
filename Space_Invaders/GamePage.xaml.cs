@@ -154,6 +154,8 @@ public sealed partial class GamePage : Page
     {
         this.Focus(FocusState.Programmatic);
         this.KeyDown += HandleKeyboardInput;
+        _gameManager.GameWidth = GameCanvas.ActualWidth;
+        _gameManager.GameHeight = GameCanvas.ActualHeight;
     }
 
     private void OnPageUnloaded(object? sender, RoutedEventArgs e)

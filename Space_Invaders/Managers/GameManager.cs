@@ -65,6 +65,9 @@ public class GameManager : INotifyPropertyChanged
     private int _enemyMoveDirection = 1; // 1 for right, -1 for left
     private double _enemySpeed = 1.0;
     private double _enemyDropAmount = 20.0;
+    private double _eliteEnemySpeed = 3.0; // Speed for Elite enemy
+
+    private Random _random = new Random(); // New Random instance
 
     public GameManager()
     {
@@ -103,7 +106,7 @@ public class GameManager : INotifyPropertyChanged
 
             for (int col = 0; col < 11; col++)
             {
-                var enemy = new Enemy((int)(startX + col * 50), row * 45 + 50, unitType);
+                var enemy = new Enemy((int)(startX + col * 50), row * 45 + 80, unitType);
                 Enemies.Add(enemy);
             }
         }
@@ -158,6 +161,8 @@ public class GameManager : INotifyPropertyChanged
         HandleEnemyFirePattern();
         ProcessCollisionDetection();
         UpdateEnemyMovement(); // Added this line
+        UpdateEliteEnemyMovement(); // Update Elite enemy movement
+        SpawnEliteEnemy(); // Attempt to spawn Elite enemy
 
         if (Enemies.Count == 0)
         {
@@ -166,6 +171,67 @@ public class GameManager : INotifyPropertyChanged
             CurrentPlayer.Lives += 1; // Bônus de vida
         }
         CleanUpDestroyedBarriers(); // Call the cleanup method
+    }
+
+    private void SpawnEliteEnemy()
+    {
+        // Only one Elite enemy at a time
+        if (Enemies.Any(b => b.UnitType == HostileUnitType.Elite)) return;
+
+        // 1 in 500 chance to spawn an Elite enemy per update cycle
+        if (_random.Next(0, 500) == 0) 
+        {
+            int startX;
+            int direction; // 1 for right, -1 for left
+            if (_random.Next(0, 2) == 0) // Randomly choose left or right side
+            {
+                // Spawn from left, move right
+                startX = -50; // Just off-screen to the left
+                direction = 1;
+            }
+            else
+            {
+                // Spawn from right, move left
+                startX = (int)GameWidth + 50; // Just off-screen to the right
+                direction = -1;
+            }
+
+            var eliteEnemy = new Enemy(startX, 50, HostileUnitType.Elite); // Fixed Y position near top
+            eliteEnemy.MoveDirection = direction; // Set the movement direction
+            eliteEnemy.PosX = startX; // Set initial position
+            eliteEnemy.PosY = 40; // Set initial Y position
+            eliteEnemy.Width = 50; // Elite enemy might be larger
+            eliteEnemy.Height = 40;
+            eliteEnemy.ScoreValue = _random.Next(50, 301); // Random score for Elite enemy
+            eliteEnemy.FireInterval = TimeSpan.FromSeconds(1.5);
+            eliteEnemy.FireProbability = 0.003;
+            eliteEnemy.ConfigureAssetPath(); // Ensure asset path is set
+
+            // Store direction in a way that can be accessed during movement
+            // For simplicity, let's add a custom property or use a dictionary if Enemy class cannot be modified
+            // For now, we'll assume we can add a property to Enemy or pass it around.
+            // Let's add a temporary property to Enemy for movement direction.
+            // This will require modifying the Enemy class.
+            // For now, I'll store it in a tuple or a custom class if Enemy cannot be modified.
+            // Let's assume for now that we can add a property to Enemy.
+            // If not, I'll need to create a wrapper class for EliteEnemy.
+
+            // For now, let's just add it and assume we'll handle its movement separately.
+            Enemies.Add(eliteEnemy);
+        }
+    }
+
+    private void UpdateEliteEnemyMovement()
+    {
+        if (!Enemies.Any(b => b.UnitType == HostileUnitType.Elite)) return;
+        var eliteEnemy = Enemies.First(b => b.UnitType == HostileUnitType.Elite);
+        eliteEnemy.PosX += _eliteEnemySpeed * eliteEnemy.MoveDirection;
+
+        // Remove if off-screen
+        if ((eliteEnemy.MoveDirection == 1 && eliteEnemy.PosX > GameWidth) || (eliteEnemy.MoveDirection == -1 && eliteEnemy.PosX + eliteEnemy.Width < 0))
+        {
+            Enemies.RemoveAt(Enemies.IndexOf(eliteEnemy));
+        }
     }
 
     private void CleanUpDestroyedBarriers()
@@ -186,6 +252,7 @@ public class GameManager : INotifyPropertyChanged
         bool hitEdge = false;
         foreach (var enemy in Enemies)
         {
+            if (enemy.UnitType == HostileUnitType.Elite) continue; // Skip Elite enemy here
             enemy.PosX += _enemySpeed * _enemyMoveDirection;
 
             // Check for boundary collision
@@ -204,6 +271,7 @@ public class GameManager : INotifyPropertyChanged
             _enemyMoveDirection *= -1; // Reverse direction
             foreach (var enemy in Enemies)
             {
+                if (enemy.UnitType == HostileUnitType.Elite) continue; // Skip Elite enemy here
                 enemy.PosY += _enemyDropAmount; // Move down
                 _enemySpeed += 0.003; // Increase speed slightly
             }
@@ -256,6 +324,7 @@ public class GameManager : INotifyPropertyChanged
 
             if (bullet.Category == ShotCategory.Player)
             {
+                // Collision with regular enemies
                 for (int j = Enemies.Count - 1; j >= 0; j--)
                 {
                     if (Enemies[j].IsCollidingWith(bullet))
@@ -267,6 +336,7 @@ public class GameManager : INotifyPropertyChanged
                         break;
                     }
                 }
+                if (hit) continue;
             }
             else if (bullet.Category == ShotCategory.Enemy)
             {

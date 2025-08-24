@@ -19,6 +19,7 @@ public class Enemy
     public string SpriteAssetPath { get; set; }
     public int EntityWidth { get; set; } = 40;
     public int EntityHeight { get; set; } = 40;
+    public int MoveDirection { get; set; } = 0; // 1 for right, -1 for left, 0 for no movement
 
     public DateTime PreviousFireTime { get; set; } = DateTime.MinValue;
     public TimeSpan FireInterval { get; set; }

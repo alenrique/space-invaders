@@ -1,0 +1,55 @@
+<Page
+    x:Class="Space_Invaders.GamePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Space_Invaders"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <ScrollViewer
+        x:Name="MainScrollViewer"
+        IsTabStop="True"
+        ZoomMode="Disabled"
+        VerticalScrollMode="Disabled"
+        HorizontalScrollMode="Disabled"
+        VerticalScrollBarVisibility="Disabled"
+        HorizontalScrollBarVisibility="Disabled">
+
+        <Canvas
+            x:Name="GameCanvas"
+            Width="600"
+            Height="600"
+            Background="Black"
+            KeyDown="HandleKeyboardInput">
+
+            <!-- Plano de fundo com efeito gradiente -->
+            <Rectangle Width="600" Height="600">
+                <Rectangle.Fill>
+                    <RadialGradientBrush
+                        GradientOrigin="0.5,0.5"
+                        Center="0.5,0.5"
+                        RadiusX="0.8"
+                        RadiusY="0.8">
+                        <GradientStop Color="#303030" Offset="0.0"/>
+                        <GradientStop Color="#000000" Offset="1.0"/>
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+
+            <!-- Interface superior: Pontuação e Vidas -->
+            <TextBlock
+                x:Name="ScoreText"
+                Text="Score: 0"
+                FontSize="16"
+                FontWeight="Bold"
+                Foreground="White"/>
+
+            <TextBlock
+                x:Name="LifesText"
+                Text="Lifes: 3"
+                FontSize="16"
+                FontWeight="Bold"
+                Foreground="White"/>
+                
+        </Canvas>
+    </ScrollViewer>
+</Page>

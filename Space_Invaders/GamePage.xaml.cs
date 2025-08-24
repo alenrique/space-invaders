@@ -1,437 +1,184 @@
 using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using Space_Invaders.Models;
 using Space_Invaders.Utils;
+using Space_Invaders.Managers;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
 using Windows.System;
 
 namespace Space_Invaders;
 
 public sealed partial class GamePage : Page
 {
-    public Player? currentPlayer;
-    public Image? playerSprite;
-    
-    // Gerenciamento de projéteis
-    private List<Bullet> activeBullets = new List<Bullet>();
-    private List<Rectangle> bulletGraphics = new List<Rectangle>();
-    
-    // Gerenciamento de adversários
-    private List<Enemy> hostileEntities = new List<Enemy>();
-    private List<Image> enemySprites = new List<Image>();
-    
-    // Gerenciamento de obstáculos
-    private List<Wall> barriers = new List<Wall>();
-    private List<Rectangle> barrierGraphics = new List<Rectangle>();
-    
-    // Loop principal do jogo
-    private DispatcherTimer mainGameLoop;
-    
-    // Sistema de áudio
-    private SoundManager? audioSystem;
+    private readonly GameManager _gameManager;
+    private readonly DispatcherTimer _mainGameLoop;
+    private readonly SoundManager? _audioSystem;
+
+    private readonly Dictionary<object, FrameworkElement> _sprites = new();
 
     public GamePage()
     {
         this.InitializeComponent();
+        _gameManager = new GameManager();
+        this.DataContext = _gameManager;
 
-        // Configuração inicial da página
         this.Loaded += OnPageLoaded;
         this.Unloaded += OnPageUnloaded;
 
-        InitializePlayer();
-        InitializeEnemyFormation();
-        InitializeDefensiveBarriers();
+        _audioSystem = new SoundManager();
 
-        RefreshScoreDisplay();
-        RefreshLifeDisplay();
-        
-        // Configurar loop do jogo
-        SetupGameLoop();
-    }
+        _gameManager.Enemies.CollectionChanged += Entities_CollectionChanged;
+        _gameManager.Bullets.CollectionChanged += Entities_CollectionChanged;
+        _gameManager.Barriers.CollectionChanged += Entities_CollectionChanged;
 
-    private void SetupGameLoop()
-    {
-        mainGameLoop = new DispatcherTimer();
-        mainGameLoop.Interval = TimeSpan.FromMilliseconds(16); // Aproximadamente 60 FPS
-        mainGameLoop.Tick += OnGameLoopTick;
-        mainGameLoop.Start();
-    }
+        InitializeVisuals();
 
-    private void OnGameLoopTick(object sender, object e)
-    {
-        ProcessBulletMovement();
-        HandleEnemyFirePattern();
-        ProcessCollisionDetection();
-        RefreshBarrierAppearance();
-    }
-
-    private void HandleEnemyFirePattern()
-    {
-        // Sistema de disparo automático dos inimigos
-        foreach (Enemy hostileUnit in hostileEntities)
+        _mainGameLoop = new DispatcherTimer
         {
-            Bullet? projectile = hostileUnit.Shoot();
-            if (projectile != null)
-            {
-                activeBullets.Add(projectile);
-                
-                // Efeito sonoro para disparo inimigo
-                audioSystem?.PlayEnemyShoot();
-                
-                // Renderização visual do projétil inimigo (cor vermelha)
-                Rectangle projectileShape = new Rectangle
-                {
-                    Width = 4,
-                    Height = 10,
-                    Fill = new SolidColorBrush(Colors.White)
-                };
-                
-                Canvas.SetLeft(projectileShape, projectile.PosX);
-                Canvas.SetTop(projectileShape, projectile.PosY);
-                
-                GameCanvas.Children.Add(projectileShape);
-                bulletGraphics.Add(projectileShape);
-            }
-        }
-    }
-
-    private void ProcessBulletMovement()
-    {
-        // Atualização da física dos projéteis
-        for (int idx = activeBullets.Count - 1; idx >= 0; idx--)
-        {
-            activeBullets[idx].UpdatePosition();
-            
-            // Sincronização visual
-            Canvas.SetTop(bulletGraphics[idx], activeBullets[idx].PosY);
-            
-            // Limpeza de projéteis fora dos limites
-            if (activeBullets[idx].IsOffScreen(600)) // Limite vertical da tela
-            {
-                GameCanvas.Children.Remove(bulletGraphics[idx]);
-                activeBullets.RemoveAt(idx);
-                bulletGraphics.RemoveAt(idx);
-            }
-        }
-    }
-
-    private void ProcessCollisionDetection()
-    {
-        // Sistema de detecção de colisões
-        for (int projIndex = activeBullets.Count - 1; projIndex >= 0; projIndex--)
-        {
-            Bullet projectile = activeBullets[projIndex];
-            bool hasCollided = false;
-            
-            if (projectile.Category == ShotCategory.Player)
-            {
-                // Projétil do jogador contra inimigos
-                hasCollided = ProcessPlayerProjectileHits(projectile, projIndex);
-            }
-            else
-            {
-                // Projétil inimigo contra jogador
-                hasCollided = ProcessEnemyProjectileHits(projectile, projIndex);
-            }
-            
-            // Verificar impacto em barreiras se não houve outras colisões
-            if (!hasCollided)
-            {
-                ProcessBarrierCollisions(projectile, projIndex);
-            }
-        }
-        
-        // Verificação de vitória por eliminação total
-        if (hostileEntities.Count == 0)
-        {
-            // Lógica para próxima fase pode ser implementada aqui
-            // Exemplo: InitializeEnemyFormation(); para nova wave
-        }
-    }
-
-    private bool ProcessPlayerProjectileHits(Bullet projectile, int projIndex)
-    {
-        // Verificação de acertos em adversários
-        for (int enemyIdx = hostileEntities.Count - 1; enemyIdx >= 0; enemyIdx--)
-        {
-            Enemy target = hostileEntities[enemyIdx];
-            
-            if (target.IsCollidingWith(projectile))
-            {
-                // Sistema de pontuação
-                if (currentPlayer != null)
-                {
-                    currentPlayer.AddScore(target.Points);
-                    RefreshScoreDisplay();
-                }
-                
-                // Efeito sonoro de destruição
-                audioSystem?.PlayExplosion();
-                
-                // Remoção do projétil
-                DestroyBullet(projIndex);
-                
-                // Remoção do inimigo
-                GameCanvas.Children.Remove(enemySprites[enemyIdx]);
-                hostileEntities.RemoveAt(enemyIdx);
-                enemySprites.RemoveAt(enemyIdx);
-                
-                return true; // Confirmação de acerto
-            }
-        }
-        return false;
-    }
-
-    private bool ProcessEnemyProjectileHits(Bullet projectile, int projIndex)
-    {
-        // Verificação de dano ao jogador
-        if (currentPlayer != null && projectile.IsCollidingWith(currentPlayer.PosX, currentPlayer.PosY, currentPlayer.Width, currentPlayer.Height))
-        {
-            // Redução de vida do jogador
-            currentPlayer.LoseLife();
-            RefreshLifeDisplay();
-            
-            // Efeito sonoro de dano
-            audioSystem?.PlayHit();
-            
-            // Remoção do projétil
-            DestroyBullet(projIndex);
-            
-            // Verificação de fim de jogo
-            if (currentPlayer.Lives <= 0)
-            {
-                // Parada do jogo - Game Over
-                mainGameLoop.Stop();
-                // Interface de game over pode ser implementada aqui
-            }
-            
-            return true; // Confirmação de acerto
-        }
-        return false;
-    }
-
-    private void ProcessBarrierCollisions(Bullet projectile, int projIndex)
-    {
-        // Sistema de dano em barreiras defensivas
-        for (int barrierIdx = barriers.Count - 1; barrierIdx >= 0; barrierIdx--)
-        {
-            Wall defensiveWall = barriers[barrierIdx];
-            
-            if (!defensiveWall.IsDestroyed && defensiveWall.IsCollidingWith(projectile))
-            {
-                // Aplicação de dano estrutural
-                bool isCompletelyDestroyed = defensiveWall.TakeDamage();
-                
-                // Efeito sonoro de impacto
-                audioSystem?.PlayHit();
-                
-                // Remoção do projétil
-                DestroyBullet(projIndex);
-                
-                // Limpeza de barreira destruída
-                if (isCompletelyDestroyed)
-                {
-                    GameCanvas.Children.Remove(barrierGraphics[barrierIdx]);
-                    barriers.RemoveAt(barrierIdx);
-                    barrierGraphics.RemoveAt(barrierIdx);
-                }
-                
-                break; // Um projétil só pode atingir uma barreira
-            }
-        }
-    }
-
-    private void DestroyBullet(int bulletIndex)
-    {
-        if (bulletIndex >= 0 && bulletIndex < activeBullets.Count)
-        {
-            GameCanvas.Children.Remove(bulletGraphics[bulletIndex]);
-            activeBullets.RemoveAt(bulletIndex);
-            bulletGraphics.RemoveAt(bulletIndex);
-        }
-    }
-
-    private void RefreshBarrierAppearance()
-    {
-        // Atualização visual baseada na integridade estrutural
-        for (int i = 0; i < barriers.Count; i++)
-        {
-            if (!barriers[i].IsDestroyed)
-            {
-                barrierGraphics[i].Fill = barriers[i].GetWallColor();
-            }
-        }
-    }
-
-    private void InitializeDefensiveBarriers()
-    {
-        // Construção de estruturas defensivas
-        int barrierVerticalPos = 400; // Altura das barreiras
-        int[] barrierHorizontalPositions = { 100 }; // Posições horizontais
-        
-        foreach (int barrierX in barrierHorizontalPositions)
-        {
-            Wall defensiveStructure = new Wall(barrierX, barrierVerticalPos);
-            barriers.Add(defensiveStructure);
-            
-            Rectangle barrierVisual = new Rectangle
-            {
-                Width = defensiveStructure.Width,
-                Height = defensiveStructure.Height,
-                Fill = defensiveStructure.GetWallColor()
-            };
-            
-            Canvas.SetLeft(barrierVisual, defensiveStructure.PosX);
-            Canvas.SetTop(barrierVisual, defensiveStructure.PosY);
-            
-            GameCanvas.Children.Add(barrierVisual);
-            barrierGraphics.Add(barrierVisual);
-        }
-    }
-
-    private void FireProjectile()
-    {
-        if (currentPlayer != null)
-        {
-            // Efeito sonoro de disparo
-            audioSystem?.PlayPlayerShoot();
-            
-            // Criação de novo projétil na posição do jogador
-            Bullet newProjectile = new Bullet(currentPlayer.PosX + currentPlayer.Width / 2, currentPlayer.PosY, 10, ShotCategory.Player);
-            activeBullets.Add(newProjectile);
-            
-            // Renderização visual do projétil do jogador (amarelo)
-            Rectangle projectileVisual = new Rectangle
-            {
-                Width = 4,
-                Height = 10,
-                Fill = new SolidColorBrush(Colors.White)
-            };
-            
-            Canvas.SetLeft(projectileVisual, newProjectile.PosX);
-            Canvas.SetTop(projectileVisual, newProjectile.PosY);
-            
-            GameCanvas.Children.Add(projectileVisual);
-            bulletGraphics.Add(projectileVisual);
-        }
-    }
-
-    private void RefreshScoreDisplay()
-    {
-        if (currentPlayer != null)
-            ScoreText.Text = $"Score: {currentPlayer.Score}";
-    }
-
-    private void RefreshLifeDisplay()
-    {
-        if (currentPlayer != null)
-            LifesText.Text = $"Lifes: {currentPlayer.Lives}";
-    }
-
-    public void InitializeEnemyFormation()
-    {
-        // Limpeza de formações anteriores
-        hostileEntities.Clear();
-        enemySprites.Clear();
-
-        for (int row = 0; row < 5; row++)
-        {
-            HostileUnitType unitType;
-
-            if (row == 0)
-                unitType = HostileUnitType.Heavy;   // Primeira fileira - unidades pesadas
-            else if (row == 1 || row == 2)
-                unitType = HostileUnitType.Standard;   // Segunda e terceira fileiras - unidades médias
-            else
-                unitType = HostileUnitType.Light;   // Quarta e quinta fileiras - unidades leves
-
-            for (int col = 0; col < 3; col++)
-            {
-                Enemy hostileUnit = new Enemy(col * 70 + 300, row * 50 + 50, unitType);
-                hostileUnit.SetImagePath();
-                hostileEntities.Add(hostileUnit);
-
-                Image enemyVisual = new Image
-                {
-                    Width = 50,
-                    Height = 50,
-                    Source = new BitmapImage(new Uri(hostileUnit.ImagePath))
-                };
-
-                Canvas.SetLeft(enemyVisual, hostileUnit.PosX);
-                Canvas.SetTop(enemyVisual, hostileUnit.PosY);
-
-                GameCanvas.Children.Add(enemyVisual);
-                enemySprites.Add(enemyVisual);
-            }
-        }
-    }
-
-    public void InitializePlayer()
-    {
-        currentPlayer = new Player(300, 500); // Coordenadas iniciais do jogador
-
-        playerSprite = new Image
-        {
-            Width = currentPlayer.Width,
-            Height = currentPlayer.Height,
-            Source = new BitmapImage(new Uri(currentPlayer.ImagePath))
+            Interval = TimeSpan.FromMilliseconds(16) // ~60 FPS
         };
-
-        Canvas.SetLeft(playerSprite, currentPlayer.PosX);
-        Canvas.SetTop(playerSprite, currentPlayer.PosY);
-
-        GameCanvas.Children.Add(playerSprite);
+        _mainGameLoop.Tick += OnGameLoopTick;
+        _mainGameLoop.Start();
     }
 
-    private void OnPageLoaded(object sender, RoutedEventArgs e)
+    private void InitializeVisuals()
     {
-        // Configuração de foco para captura de entrada
-        MainScrollViewer.Focus(FocusState.Programmatic);
-
-        // Vinculação de eventos de teclado
-        MainScrollViewer.KeyDown += HandleKeyboardInput;
-
-        // Posicionamento de elementos de interface
-        Canvas.SetLeft(ScoreText, 10);
-        Canvas.SetTop(ScoreText, 10);
-
-        Canvas.SetLeft(LifesText, 500);
-        Canvas.SetTop(LifesText, 10);
+        GameCanvas.Children.Clear();
+        _sprites.Clear();
         
-        // Inicialização do sistema de áudio
-        audioSystem = new SoundManager();
+        GameCanvas.Children.Add(ScoreText);
+        GameCanvas.Children.Add(LifesText);
+        GameCanvas.Children.Add(GameOverText);
+
+        CreateSprite(_gameManager.CurrentPlayer);
+        foreach (var barrier in _gameManager.Barriers) CreateSprite(barrier);
+        foreach (var enemy in _gameManager.Enemies) CreateSprite(enemy);
     }
 
-    private void OnPageUnloaded(object sender, RoutedEventArgs e)
+    private void OnGameLoopTick(object? sender, object e)
     {
-        // Finalização do loop principal
-        mainGameLoop?.Stop();
-        
-        // Liberação de recursos de áudio
-        audioSystem?.Dispose();
+        if (_gameManager.IsGameOver)
+        {
+            GameOverText.Visibility = Visibility.Visible;
+            _mainGameLoop.Stop();
+            return;
+        }
+
+        _gameManager.UpdateGame();
+        UpdateAllPositions();
     }
 
-    public void HandleKeyboardInput(object sender, KeyRoutedEventArgs e)
+    private void UpdateAllPositions()
     {
+        foreach (var (entity, sprite) in _sprites)
+        {
+            if (entity is Player p) Canvas.SetLeft(sprite, p.PosX);
+            else if (entity is Enemy en) { Canvas.SetLeft(sprite, en.PosX); Canvas.SetTop(sprite, en.PosY); }
+            else if (entity is Bullet b) { Canvas.SetLeft(sprite, b.PosX); Canvas.SetTop(sprite, b.PosY); }
+            else if (entity is Wall w && !w.IsDestroyed && sprite is Rectangle r) { Canvas.SetLeft(sprite, w.PosX); Canvas.SetTop(sprite, w.PosY); r.Fill = w.GetWallColor(); }
+        }
+    }
+
+    private void Entities_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
+        {
+            foreach (var item in e.NewItems)
+            {
+                CreateSprite(item);
+                if (item is Bullet bullet)
+                {
+                    if (bullet.Category == ShotCategory.Player) _audioSystem?.PlayPlayerShoot();
+                    else _audioSystem?.PlayEnemyShoot();
+                }
+            }
+        }
+        else if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems != null)
+        {
+            foreach (var item in e.OldItems)
+            {
+                if (_sprites.TryGetValue(item, out var sprite))
+                {
+                    GameCanvas.Children.Remove(sprite);
+                    _sprites.Remove(item);
+                    if (item is Enemy) _audioSystem?.PlayExplosion();
+                }
+            }
+        }
+    }
+
+    private void CreateSprite(object entity)
+    {
+        FrameworkElement? sprite = null;
+        if (entity is Player p)
+        {
+            sprite = new Image { Width = p.Width, Height = p.Height, Source = new BitmapImage(new Uri(p.ImagePath)) };
+            Canvas.SetTop(sprite, p.PosY);
+        }
+        else if (entity is Enemy en)
+        {
+            sprite = new Image { Width = en.Width, Height = en.Height, Source = new BitmapImage(new Uri(en.ImagePath)) };
+            Canvas.SetTop(sprite, en.PosY);
+        }
+        else if (entity is Bullet b)
+        {
+            sprite = new Rectangle
+            {
+                Width = 4, Height = 10,
+                Fill = new SolidColorBrush(b.Category == ShotCategory.Player ? Colors.Yellow : Colors.White)
+            };
+            Canvas.SetTop(sprite, b.PosY);
+        }
+        else if (entity is Wall w)
+        {
+            sprite = new Rectangle { Width = w.Width, Height = w.Height, Fill = w.GetWallColor() };
+            Canvas.SetTop(sprite, w.PosY);
+            Canvas.SetLeft(sprite, w.PosX);
+        }
+
+        if (sprite != null)
+        {
+            _sprites[entity] = sprite;
+            GameCanvas.Children.Add(sprite);
+        }
+    }
+
+    private void OnPageLoaded(object? sender, RoutedEventArgs e)
+    {
+        this.Focus(FocusState.Programmatic);
+        this.KeyDown += HandleKeyboardInput;
+    }
+
+    private void OnPageUnloaded(object? sender, RoutedEventArgs e)
+    {
+        _mainGameLoop.Stop();
+        _audioSystem?.Dispose();
+        this.KeyDown -= HandleKeyboardInput;
+    }
+
+    private void HandleKeyboardInput(object sender, KeyRoutedEventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"Key Pressed: {e.Key}");
         switch (e.Key)
         {
             case VirtualKey.Left:
-                if (currentPlayer != null)
-                    currentPlayer.MoveX(-10); // Movimento para esquerda
+            case VirtualKey.A:
+                _gameManager.MovePlayer(-1);
                 break;
             case VirtualKey.Right:
-                if (currentPlayer != null)
-                    currentPlayer.MoveX(10); // Movimento para direita
+            case VirtualKey.D:
+                _gameManager.MovePlayer(1);
                 break;
             case VirtualKey.Space:
-                FireProjectile(); // Ativação de disparo
+                _gameManager.PlayerShoot();
                 break;
         }
-
-        // Sincronização visual da posição do jogador
-        if (currentPlayer != null)
-            Canvas.SetLeft(playerSprite, currentPlayer.PosX);
     }
 }
